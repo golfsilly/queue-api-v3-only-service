@@ -1,0 +1,68 @@
+// ตารางของระบบคิวเดิมในฐาน webaranhos คัดลอกมาจาก web-aranhos-api/prisma/webaranhos/schema.prisma
+// ห้ามรัน prisma migrate / db push กับไฟล์นี้ เพราะฐานข้อมูลนี้มีตารางของระบบอื่นอยู่ด้วย ใช้ได้แค่ `prisma generate`
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model queueService {
+  id             Int          @id @default(autoincrement())
+  hn             String
+  vn             String
+  display_text   String?
+  oqueue         Int
+  main_dep_queue Int?
+  cur_dep        String?
+  main_dep       String?
+  department     String?
+  vstdate        String
+  confirm_all    String?
+  lab_count      Int?
+  report_count   Int?
+  read_status    String?
+  pname          String
+  fname          String
+  lname          String
+  pttype_check   String?
+  cur_users_id   Int?
+  stay           Boolean?     @default(false)
+  status_call    statusQueue? @default(wait)
+  createdAt      DateTime?    @default(now())
+  updatedAt      DateTime?    @updatedAt
+  cur_user       queueUsers?  @relation(fields: [cur_users_id], references: [id])
+
+  @@index([cur_users_id], map: "queueService_cur_users_id_fkey")
+}
+
+model queueUsers {
+  id            Int            @id @default(autoincrement())
+  username      String
+  password      String
+  fullname      String
+  isActive      Boolean        @default(true)
+  createdAt     DateTime?      @default(now())
+  updatedAt     DateTime?      @updatedAt
+  queue_service queueService[]
+}
+
+model queueListCallnameDepartment {
+  id        Int       @id @default(autoincrement())
+  name      String
+  depcode   String
+  isActive  Boolean   @default(true)
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+}
+
+enum statusQueue {
+  wait
+  stay
+  calling
+  success
+}

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>จอเรียกคิวจำลอง</title>
+<!-- จอทีวีจำลองสำหรับทดสอบเท่านั้น: ฟัง event เดียวกับจอจริง queue/call-monitor/{แผนก} -->
+<script src="http://localhost:5600/socket.io/socket.io.js"></script>
+<style>
+  :root { --bg: #f6f7f9; --card: #ffffff; --ink: #1d2433; --quiet: #5b6577; --accent: #1f6feb; --ok: #1a7f37; --bad: #cf222e; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0f1218; --card: #181c24; --ink: #e6e9ef; --quiet: #9aa4b5; --accent: #58a6ff; --ok: #3fb950; --bad: #f85149; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, "Sarabun", sans-serif; background: var(--bg); color: var(--ink); }
+  header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 16px; }
+  header label { color: var(--quiet); }
+  input { font-size: 16px; padding: 6px 10px; width: 120px; }
+  #status { font-weight: 600; }
+  #status.ok { color: var(--ok); } #status.bad { color: var(--bad); }
+  main { padding: 0 16px 16px; display: grid; gap: 16px; }
+  .now { background: var(--card); border-radius: 12px; padding: 32px 16px; text-align: center; }
+  .now .label { color: var(--quiet); font-size: 18px; }
+  .now .number { font-size: clamp(64px, 18vw, 160px); font-weight: 700; color: var(--accent); line-height: 1.1; }
+  .now .point { font-size: 28px; }
+  .log { background: var(--card); border-radius: 12px; padding: 16px; }
+  .log h2 { margin: 0 0 8px; font-size: 16px; color: var(--quiet); }
+  .log ol { margin: 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <label>แผนกที่แสดง <input id="deps" value="010,202"></label>
+  <span id="status" class="bad">ยังไม่เชื่อมต่อ</span>
+</header>
+<main>
+  <section class="now">
+    <div class="label">เชิญหมายเลข</div>
+    <div class="number" id="number">-</div>
+    <div class="point" id="point"></div>
+  </section>
+  <section class="log">
+    <h2>คิวที่เรียกล่าสุด</h2>
+    <ol id="log"></ol>
+  </section>
+</main>
+<script>
+  const statusEl = document.getElementById('status');
+  const socket = io('http://localhost:5600', { transports: ['websocket'] });
+  socket.on('connect', () => { statusEl.textContent = 'เชื่อมต่อแล้ว'; statusEl.className = 'ok'; });
+  socket.on('disconnect', () => { statusEl.textContent = 'หลุด กำลังเชื่อมต่อใหม่...'; statusEl.className = 'bad'; });
+  const wanted = () => document.getElementById('deps').value.split(',').map((s) => s.trim()).filter(Boolean);
+  socket.onAny((event, q) => {
+    const dep = event.startsWith('queue/call-monitor/') ? event.split('/')[2] : null;
+    if (!dep || !wanted().includes(dep)) return;
+    const text = [q.display_text, q.oqueue].filter((v) => v !== null && v !== undefined && v !== '').join(' ');
+    document.getElementById('number').textContent = text || '-';
+    document.getElementById('point').textContent = q.call_name ? `ที่ ${q.call_name}` : '';
+    const li = document.createElement('li');
+    li.textContent = `${new Date().toLocaleTimeString('th-TH')}  ${text}  ${q.call_name ?? ''}  (แผนก ${dep})`;
+    const log = document.getElementById('log');
+    log.prepend(li);
+    while (log.children.length > 10) log.lastChild.remove();
+  });
+</script>
+</body>
+</html>

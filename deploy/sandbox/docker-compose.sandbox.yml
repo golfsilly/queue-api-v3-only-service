@@ -1,0 +1,36 @@
+# โหมดทดลอง: ระบบคิวใหม่ + ฐานข้อมูลจำลอง (ไม่แตะฐานจริง)
+# เริ่ม:   docker compose -f deploy/sandbox/docker-compose.sandbox.yml up -d --build
+# หยุด:    docker compose -f deploy/sandbox/docker-compose.sandbox.yml down
+# ล้างข้อมูลแล้วเริ่มใหม่: down -v แล้ว up อีกครั้ง
+name: aran-queue-sandbox
+
+services:
+  sandbox-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: sandbox-root
+      TZ: Asia/Bangkok
+    command: ["--default-time-zone=+07:00"]
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+      - sandbox-db-data:/var/lib/mysql
+    ports:
+      - "33307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-psandbox-root"]
+      interval: 3s
+      retries: 40
+
+  queue-api:
+    build: ../..
+    image: aran-queue:latest
+    command: ["node", "dist/main.api.js"]
+    env_file: sandbox.env
+    ports:
+      - "5600:5600"
+    depends_on:
+      sandbox-db:
+        condition: service_healthy
+
+volumes:
+  sandbox-db-data:
